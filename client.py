@@ -11,7 +11,7 @@ class Client(DatagramProtocol):
         self.capacity = capacity  # the number of peers that this client can connect
 
         # server info
-        self.server_add = "127.0.0.1"
+        self.server_addr = "127.0.0.1"
         self.server_port = 9999
 
         # peers info
@@ -25,12 +25,11 @@ class Client(DatagramProtocol):
 
     def datagramReceived(self, datagram: bytes, addr):
         datagram = datagram.decode("utf-8")
-        if addr == self.server:
-            print("Choose a client from these\n", datagram)
-            self.address = input("Write host: "), int(input("Write port: "))
+        if addr[0] == self.server_addr and addr[1] == self.server_port:
+            self.parse_server_message(datagram)
             reactor.callInThread(self.send_message)
         else:
-            # perform
+            # perform client job
             print(addr, ":", datagram)
 
     def send_message(self):
@@ -39,7 +38,12 @@ class Client(DatagramProtocol):
 
     def parse_server_message(self, datagram):
         # the server will tell you where you can connect
-        pass
+        peer_addr = datagram.split("?")
+        for addr in peer_addr:
+            self.peers_info[addr] = {
+                "file_names": []
+            }
+
 
 if __name__ == '__main__':
     r_port = randint(1000, 5000)

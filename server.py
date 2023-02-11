@@ -16,17 +16,14 @@ class Server(DatagramProtocol):
             capacity = datagram.split("-")[1]
             if addr not in self.clients2addr.keys():
                 self.add_node(addr=addr, capacity=capacity)
-                print(f"ADD: Client {addr} added with capacity {capacity}")
+                print(f"Server | ADD: client {addr} added with capacity {capacity}")
+                # send the neighbouring info
+                neigh_str = self.get_neigh_str()
+                self.transport.write(neigh_str.encode("utf-8"), addr)
             else:
-                raise Warning("This node already exists")
-
-            # send the neighbouring info
-
-            adds = "\n".join([str(x) for x in self.clients])
-            self.transport.write(adds.encode("utf-8"), addr)
-            self.clients.append(addr)
+                raise Warning("Server | This node already exists")
         else:
-            raise Warning("Server only accept registration requests!")
+            raise Warning("Server | only accept registration requests!")
 
     def add_node(self, addr, capacity):
         if self.adjacency_mat is None:
@@ -40,13 +37,19 @@ class Server(DatagramProtocol):
             temp_mat[:self.n_nodes, :self.n_nodes] = self.adjacency_mat.copy()
             temp_mat[-1, -1] = 1  # set the self adjacent
             random_ngh = np.random.permutation(range(self.n_nodes))[:capacity]
-            temp_mat[random_ngh] = 1  # set the neighbours randomly
+            temp_mat[random_ngh] = 1  # set the neighbours
             self.adjacency_mat = temp_mat
 
             # update the info
             self.clients2cap[self.n_nodes] = capacity
             self.clients2addr[self.n_nodes] = addr
             self.n_nodes += 1
+
+    def get_neigh_str(self):
+        n_row = np.where(self.adjacency_mat[-1])[0]
+        neigh_idx = n_row[:-1]
+        neigh_str = "?".join(["-".join(self.clients2addr[j]) for j in neigh_idx])
+        return neigh_str
 
 
 if __name__ == '__main__':
