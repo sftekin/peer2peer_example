@@ -9,6 +9,8 @@ from server import Server
 from document import Document
 from twisted.internet.protocol import DatagramProtocol
 
+os.environ["FOUND"] = "0"
+
 
 def client_run(client, port):
     reactor.listenUDP(port, client)
@@ -17,8 +19,8 @@ def client_run(client, port):
 
 def run():
     num_clients = 5
-    num_queries = 10
-    file_count = 5
+    num_queries = 5
+    file_count = 20
 
     file_path = os.path.join("files", "crawled_data.json")
     doc_creator = Document(file_path=file_path)
@@ -33,7 +35,7 @@ def run():
         else:
             shard_indices.append((start_idx, end_idx))
     ports = np.random.choice(range(4000, 5000), num_clients, replace=False)
-    capacities = np.random.randint(2, num_clients, num_clients)
+    capacities = [2, 3, 3, 2, 3]
 
     # create clients
     clients = []
@@ -64,26 +66,30 @@ def run():
         time.sleep(1)
 
     time.sleep(3)
+    print("possible_names", all_names)
     print("calling query arg")
     eg_port = clients[0][1]
-    sample_words = np.random.choice(all_names, num_queries, replace=False)
+    sample_words = all_names[:num_queries]
     counter = 0
-    query_timestamps = [[time.time(), counter]]
     q_time_list = []
+    start_time = time.time()
     for word in sample_words:
         qs_time = time.time()
         server.search_fact(fact_name=word, port=eg_port)
-        while not server.name_found:
+        with open("flag.txt", "r") as f:
+            flag = f.readline()
+        while flag == "0":
             pass
         qe_time = time.time()
         counter += 1
-        server.name_found = False
 
-        query_timestamps.append([qe_time, counter])
-        q_time_list.append(qs_time - qe_time)
+        with open("flag.txt", "w") as f:
+            f.write("0")
 
-    print(query_timestamps)
-    print(q_time_list)
+        q_time_list.append(qe_time - qs_time)
+    elapsed_time = time.time() - start_time
+
+    print(f"Throughput: {counter / elapsed_time:.5f}, Latency: {np.mean(q_time_list):.5f}")
 
     for p in processes:
         p.join()

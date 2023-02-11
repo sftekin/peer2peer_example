@@ -29,10 +29,15 @@ class Server(DatagramProtocol):
             else:
                 raise Warning("Server | This node already exists")
         elif datagram == "word_found":
-            self.name_found = True
             print(f"Server | FOUND: searched name is found")
+            with open("flag.txt", "w+") as f:
+                f.write("1")
+            self.name_found = True
         else:
             raise Warning("Server | only accept registration requests!")
+
+    def get_name_found(self):
+        return self.name_found
 
     def add_node(self, addr, capacity):
         if self.n_nodes == 0:
@@ -67,6 +72,7 @@ class Server(DatagramProtocol):
 
     def search_fact(self, fact_name, port):
         query_arg = f"echo 'keyword/{fact_name}'| nc -4u -w1 localhost {int(port)}"
+        print(query_arg)
         os.system(query_arg)
 
 

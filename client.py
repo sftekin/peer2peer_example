@@ -55,7 +55,7 @@ class Client(DatagramProtocol):
                 self.transport.write(send_message, addr)
             elif header == "send_names":
                 print(f"Client {self.client_name} | send_names received from {addr}")
-                self.peer2names[addr] = message
+                self.peer2names[addr] = message.split(",")
             elif header == "keyword":
                 fac_name = message.strip()
                 if fac_name in self.cache:
