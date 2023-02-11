@@ -1,3 +1,4 @@
+import time
 from random import randint
 
 from twisted.internet.protocol import DatagramProtocol
@@ -19,7 +20,8 @@ class Client(DatagramProtocol):
         # server info
         self.server_addr = ("127.0.0.1", 9999)
         # peers info
-        self.peers_addr = {}
+        self.peers_addr = {}  # stores key: Establish flag
+        self.peer2names = {}
         print(f"Client {self.client_name} | is created.")
 
     def startProtocol(self):
@@ -34,34 +36,54 @@ class Client(DatagramProtocol):
             if new_peer:
                 for p_addr in self.peers_addr:
                     self.send_ping(addr=p_addr)
-            # reactor.callInThread(self.send_message)
+                    reactor.callInThread(self.send_information, p_addr)
         else:
-            if datagram == "ping":
+            header, message = datagram.split("/")
+            if header == "ping":
                 self.peers_addr[addr] = True
                 print(f"Client {self.client_name} | PING received from {addr}")
                 self.send_pong(addr=addr)
-            elif datagram == "pong":
+            elif header == "pong":
                 self.peers_addr[addr] = True
                 print(f"Client {self.client_name} | PONG received from {addr}")
+            elif header == "get_names":
+                package = ",".join(self.fact_names)
+                send_message = f"send_names/{package}".encode("utf-8")
+                print(f"Client {self.client_name} | get_names received from {addr}")
+                self.transport.write(send_message, addr)
+            elif header == "send_names":
+                print(f"Client {self.client_name} | send_names received from {addr}")
+                self.peer2names[addr] = message
 
     def send_ping(self, addr):
-        self.transport.write("ping".encode("utf-8"), addr)
+        self.transport.write("ping/".encode("utf-8"), addr)
 
     def send_pong(self, addr):
-        self.transport.write("pong".encode("utf-8"), addr)
+        self.transport.write("pong/".encode("utf-8"), addr)
 
-    def send_message(self):
-        while True:
-            self.transport.write(input(":::").encode("utf-8"), self.address)
+    def send_information(self, addr):
+        counter = 0
+        while not self.peers_addr[addr]:
+            if counter > 10:
+                break
+            time.sleep(1)
+            counter += 1
+
+        if not self.peers_addr[addr]:
+            print(f"Client {self.client_name} | ASK info from {addr} is timed out")
+            return
+        else:
+            # ask for information from your peer
+            self.transport.write("get_names/".encode("utf-8"), addr)
 
     def parse_server_message(self, datagram):
         if datagram:
             # the server will tell you where you can connect
             for addr in datagram.split("?"):
                 ip, port = addr.split("-")
-                new_addr = ip, int(port)
+                new_addr = (ip, int(port))
                 self.peers_addr[new_addr] = False
-                print(f"Client {self.client_name} | ADD {(ip, int(port))}")
+                print(f"Client {self.client_name} | ADD {new_addr}")
             new_peer = True
         else:
             print(f"Client {self.client_name} | This is the first node")
