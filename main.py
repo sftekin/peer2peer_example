@@ -66,8 +66,24 @@ def run():
     time.sleep(3)
     print("calling query arg")
     eg_port = clients[0][1]
-    eg_keyword = all_names[np.random.randint(len(all_names))]
-    server.search_fact(fact_name=eg_keyword, port=eg_port)
+    sample_words = np.random.choice(all_names, num_queries, replace=False)
+    counter = 0
+    query_timestamps = [[time.time(), counter]]
+    q_time_list = []
+    for word in sample_words:
+        qs_time = time.time()
+        server.search_fact(fact_name=word, port=eg_port)
+        while not server.name_found:
+            pass
+        qe_time = time.time()
+        counter += 1
+        server.name_found = False
+
+        query_timestamps.append([qe_time, counter])
+        q_time_list.append(qs_time - qe_time)
+
+    print(query_timestamps)
+    print(q_time_list)
 
     for p in processes:
         p.join()

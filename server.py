@@ -1,3 +1,5 @@
+import time
+
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import numpy as np
@@ -66,9 +68,6 @@ class Server(DatagramProtocol):
     def search_fact(self, fact_name, port):
         query_arg = f"echo 'keyword/{fact_name}'| nc -4u -w1 localhost {int(port)}"
         os.system(query_arg)
-        while not self.name_found:
-            pass
-        return True
 
 
 if __name__ == '__main__':
