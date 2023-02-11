@@ -1,10 +1,9 @@
+import random
 import time
 from random import randint
 
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-
-from document import Document
 
 
 class Client(DatagramProtocol):
@@ -13,16 +12,19 @@ class Client(DatagramProtocol):
         self.fact_names = fact_names
         self.fact_info = fact_info
         # client info
-        self.client_add = "127.0.0.1" if host == "localhost" else host
+        self.client_ip = "127.0.0.1" if host == "localhost" else host
         self.client_port = port
         self.capacity = capacity  # the number of peers that this client can connect
-        self.client_name = f"{self.client_add}/{self.client_port}"
+        self.client_address = (self.client_ip, self.client_port)
+        self.client_name = f"{self.client_ip}/{self.client_port}"
         # server info
         self.server_addr = ("127.0.0.1", 9999)
         # peers info
         self.peers_addr = {}  # stores key: Establish flag
         self.peer2names = {}
         print(f"Client {self.client_name} | is created.")
+
+        self.cache = []
 
     def startProtocol(self):
         server_message = f"ready-{self.capacity}".encode("utf-8")
@@ -54,6 +56,18 @@ class Client(DatagramProtocol):
             elif header == "send_names":
                 print(f"Client {self.client_name} | send_names received from {addr}")
                 self.peer2names[addr] = message
+            elif header == "keyword":
+                fac_name = message.strip()
+                if fac_name in self.cache:
+                    return
+                self.cache.append(fac_name)
+                if fac_name in self.fact_names:
+                    idx = self.fact_names.index(fac_name)
+                    print(f"Client {self.client_name} | {fac_name} is found, here its more info: \n")
+                    print(self.fact_info[idx])
+                    self.transport.write("word_found".encode("utf-8"), self.server_addr)
+                else:
+                    self.search_peers(keyword=fac_name)
 
     def send_ping(self, addr):
         self.transport.write("ping/".encode("utf-8"), addr)
@@ -75,6 +89,17 @@ class Client(DatagramProtocol):
         else:
             # ask for information from your peer
             self.transport.write("get_names/".encode("utf-8"), addr)
+
+    def search_peers(self, keyword):
+        found_addr = False
+        for peer_addr, peer_names in self.peer2names.items():
+            if keyword in peer_names:
+                found_addr = True
+                self.transport.write(f"keyword/{keyword}".encode("utf-8"), peer_addr)
+        if not found_addr:
+            neigh_list = list(self.peers_addr.keys())
+            peer_addr = neigh_list[randint(0, len(neigh_list) - 1)]
+            self.transport.write(f"keyword/{keyword}".encode("utf-8"), peer_addr)
 
     def parse_server_message(self, datagram):
         if datagram:

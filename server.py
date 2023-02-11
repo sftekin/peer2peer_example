@@ -1,6 +1,7 @@
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 import numpy as np
+import os
 
 
 class Server(DatagramProtocol):
@@ -9,6 +10,8 @@ class Server(DatagramProtocol):
         self.clients2addr = {}
         self.graph = {}
         self.n_nodes = 0
+
+        self.name_found = False
 
     def datagramReceived(self, datagram: bytes, addr):
         datagram = datagram.decode("utf-8")
@@ -23,6 +26,9 @@ class Server(DatagramProtocol):
                 self.transport.write(neigh_str.encode("utf-8"), addr)
             else:
                 raise Warning("Server | This node already exists")
+        elif datagram == "word_found":
+            self.name_found = True
+            print(f"Server | FOUND: searched name is found")
         else:
             raise Warning("Server | only accept registration requests!")
 
@@ -56,6 +62,13 @@ class Server(DatagramProtocol):
             neigh_idx = self.graph[node_id]
             neigh_str = "?".join([self.clients2addr[j] for j in neigh_idx])
             return neigh_str
+
+    def search_fact(self, fact_name, port):
+        query_arg = f"echo 'keyword/{fact_name}'| nc -4u -w1 localhost {int(port)}"
+        os.system(query_arg)
+        while not self.name_found:
+            pass
+        return True
 
 
 if __name__ == '__main__':
